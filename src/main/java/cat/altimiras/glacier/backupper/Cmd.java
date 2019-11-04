@@ -33,6 +33,7 @@ public class Cmd {
 		operations.addOption(new Option("ps", "job-status", false, "Job status command"));
 		operations.addOption(new Option("ls", "list", false, "List items command"));
 		operations.addOption(new Option("rm", "remove", false, "Remove item command"));
+		operations.addOption(new Option("h", "help", false, "Help command"));
 		operations.setRequired(true);
 		options.addOptionGroup(operations);
 
@@ -94,6 +95,8 @@ public class Cmd {
 				glacierBackupper.remove(
 						line.getOptionValue("n")
 				);
+			} else if (line.hasOption("h")){
+				printHelp();
 			}
 		} catch (Exception e) {
 			if (verbose) {
@@ -110,11 +113,15 @@ public class Cmd {
 			return parser.parse(options, args, true);
 		} catch (ParseException exp) {
 			logger.error(exp.getMessage());
-			HelpFormatter helpFormatter = new HelpFormatter();
-			helpFormatter.printHelp("java -jar GlacierBackupper-1.0.jar ", options, true);
+			printHelp();
 			System.exit(1);
 		}
 		return null;
+	}
+
+	private static void printHelp() {
+		HelpFormatter helpFormatter = new HelpFormatter();
+		helpFormatter.printHelp("java -jar GlacierBackupper-1.0.jar ", options, true);
 	}
 
 	private static void validateUpload(CommandLine line){
