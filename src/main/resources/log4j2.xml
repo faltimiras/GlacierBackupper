@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Configuration status="info" name="MyApp">
+
+	<Properties>
+		<Property name="pattern">%m%n</Property>
+	</Properties>
+
+	<Appenders>
+		<Console name="stdout" target="SYSTEM_OUT">
+			<PatternLayout pattern="${pattern}"/>
+		</Console>
+	</Appenders>
+	<Loggers>
+		<Root level="info">
+			<AppenderRef ref="stdout"/>
+		</Root>
+	</Loggers>
+</Configuration>

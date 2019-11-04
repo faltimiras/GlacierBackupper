@@ -6,7 +6,13 @@ Works from command line and keeps a local file to be able to check already files
 
 Read first all features (and restrictions) of S3 Glacier: https://aws.amazon.com/glacier/
 
-To use it, it requires
+## Requirements
 - Amazon AWS account
 - A vault(s) created
 - AWS key and secret (AWS IAm)
+- At least, Java 8 installed 
+
+## Authentication
+- Passing values by command line with -s and -k to specify awsSecret and awsKey
+- Reading credentials from profile (typically located at ~/.aws/credentials)
+

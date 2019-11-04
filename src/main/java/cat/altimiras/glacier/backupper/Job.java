@@ -5,20 +5,34 @@ import java.util.Objects;
 
 class Job {
 
-	final private String jobId;
-	final private String archiveId;
-	final private Date creation;
-	final private String fileName;
-	final private String region;
-	final private String vault;
+	private String jobId;
+	private String archiveId;
+	private Date creation;
+	private String name;
+	private String region;
+	private String vault;
+	private Date lastStatus;
+	private boolean urgent;
 
-	public Job(String jobId, String archiveId, String fileName, String region, String vault) {
+	public Job() {
+	}
+
+	public Job(String jobId, String archiveId, String name, String region, String vault, boolean urgent) {
 		this.jobId = jobId;
 		this.archiveId = archiveId;
-		this.fileName = fileName;
+		this.name = name;
 		this.creation = new Date();
 		this.vault = vault;
 		this.region = region;
+		this.urgent = urgent;
+	}
+
+	public Date getLastStatus() {
+		return lastStatus;
+	}
+
+	public void setLastStatus(Date lastStatus) {
+		this.lastStatus = lastStatus;
 	}
 
 	public String getJobId() {
@@ -33,8 +47,8 @@ class Job {
 		return creation;
 	}
 
-	public String getFileName() {
-		return fileName;
+	public String getName() {
+		return name;
 	}
 
 	public String getRegion() {

@@ -5,21 +5,25 @@ import java.util.Objects;
 
 class Item {
 
-	final private String name;
-	final private Date uploadDate;
-	final private String archiveId;
-	final private long size;
-	final private String vault;
-	final private String region;
+	private String name;
+	private Date uploadDate;
+	private String archiveId;
+	private String checksum;
+	private long size;
+	private String vault;
+	private String region;
 
+	public Item() {
+	}
 
-	public Item(String name, String archiveId,  long size, String vault, String region) {
+	public Item(String name, String checksum, String archiveId, long size, String vault, String region) {
 		this.name = name;
 		this.uploadDate = new Date();
 		this.size = size;
 		this.vault = vault;
 		this.region = region;
 		this.archiveId = archiveId;
+		this.checksum = checksum;
 	}
 
 	public String getName() {
@@ -46,6 +50,10 @@ class Item {
 		return region;
 	}
 
+	public String getChecksum() {
+		return checksum;
+	}
+
 	@Override
 	public boolean equals(Object o) {
 		if (this == o) return true;
@@ -65,6 +73,7 @@ class Item {
 				"name='" + name + '\'' +
 				", uploadDate=" + uploadDate +
 				", archiveId='" + archiveId + '\'' +
+				", checksum='" + checksum + '\'' +
 				", size=" + size +
 				", vault='" + vault + '\'' +
 				", region='" + region + '\'' +

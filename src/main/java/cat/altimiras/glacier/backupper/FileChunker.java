@@ -5,12 +5,16 @@ import java.io.FileInputStream;
 import java.nio.ByteBuffer;
 import java.nio.file.Path;
 import java.security.MessageDigest;
+import java.util.ArrayList;
 import java.util.Iterator;
+import java.util.List;
 
 public class FileChunker {
 
+	private static int ONE_MB = 1024*1024;
 
-	public static PartIterator partitionate (Path file, int partSize) throws Exception {
+
+	public static PartIterator partitionate(Path file, int partSize) {
 		return new PartIterator(file.toFile(), partSize);
 	}
 
@@ -18,13 +22,17 @@ public class FileChunker {
 
 		private long size;
 		private File file;
-		private  int partSize;
+		private int partSize;
 		private long currentPos;
 
-		public PartIterator(File file, int partSize) throws Exception{
+		public PartIterator(File file, int partSize) {
 			this.file = file;
 			this.partSize = partSize;
 			this.size = file.length();
+		}
+
+		public long getExpectedChunks() {
+			return Double.valueOf(Math.ceil(size / partSize)).longValue();
 		}
 
 		@Override
@@ -33,27 +41,36 @@ public class FileChunker {
 		}
 
 		@Override
-		public Chunk next()  {
+		public Chunk next() {
 
-			try(FileInputStream fis = new FileInputStream(file)){
+			try (FileInputStream fis = new FileInputStream(file)) {
 
 				MessageDigest md = MessageDigest.getInstance("SHA-256");
 
 				long pending = size - currentPos;
 				long toRead = Math.min(pending, partSize);
 
-				ByteBuffer bb = ByteBuffer.allocate((int)toRead);
+				ByteBuffer bb = ByteBuffer.allocate((int) toRead);
 				fis.getChannel().read(bb, currentPos);
 
 				//calculate checksum
-				md.update(bb.array(), 0, (int)toRead);
+				//https://docs.aws.amazon.com/amazonglacier/latest/dev/checksum-calculations.html
+				List<byte[]> checksums = new ArrayList<>();
+				int processedChecksum = 0;
+				while ( processedChecksum < toRead){
 
-				Chunk chunk = new Chunk(currentPos, bb.array(), md.digest());
+					long pendingBatchChecksum = toRead - processedChecksum;
+					int checksumBatch = (int)Math.min(pendingBatchChecksum, ONE_MB);
+					md.update(bb.array(), processedChecksum, checksumBatch);
+					checksums.add( md.digest());
+					processedChecksum+= checksumBatch;
+				}
 
-				currentPos+= toRead;
+				Chunk chunk = new Chunk(currentPos, bb.array(), Hash.calculateTreeHash(checksums));
+
+				currentPos += toRead;
 				return chunk;
-			}
-			catch (Exception e) {
+			} catch (Exception e) {
 				return null;
 			}
 		}
@@ -75,7 +92,7 @@ public class FileChunker {
 			return content;
 		}
 
-		public byte[] getChecksum() {
+		public byte[]  getChecksum() {
 			return checksum;
 		}
 

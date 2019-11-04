@@ -12,7 +12,11 @@ import java.util.List;
 
 class Hash {
 
-	static String calculateTreeHash(List<byte[]> checksums) throws Exception {
+	static String calculateTreeHashStr(List<byte[]> checksums) throws Exception {
+		return BinaryUtils.toHex(calculateTreeHash(checksums));
+
+	}
+	static byte[] calculateTreeHash(List<byte[]> checksums) throws Exception {
 
 		/*
 		 * The tree hash algorithm involves concatenating adjacent pairs of
@@ -43,7 +47,8 @@ class Hash {
 			hashes = treeHashes;
 		}
 
-		return BinaryUtils.toHex(hashes.get(0));
+		return hashes.get(0);
+		//return BinaryUtils.toHex(hashes.get(0));
 	}
 
 	static byte[] computeSHA256Hash(byte[] data) throws NoSuchAlgorithmException, IOException {

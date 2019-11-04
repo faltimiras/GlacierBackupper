@@ -1,88 +1,129 @@
 package cat.altimiras.glacier.backupper;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import software.amazon.awssdk.services.glacier.model.StatusCode;
+
+import javax.xml.bind.DatatypeConverter;
+import java.io.InputStream;
+import java.nio.file.Files;
 import java.nio.file.Path;
+import java.security.DigestInputStream;
+import java.security.MessageDigest;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.Objects;
+import java.util.Optional;
 
 class GlacierBackupper {
 
-	final private InventoryManager inventoryManager;
-	final private Inventory inventory;
-	final private GlacierManager glacierManager;
+	final static Logger logger = LoggerFactory.getLogger(GlacierBackupper.class);
 
-	GlacierBackupper(Path inventory, String awsKey, String awsSecret) throws Exception {
-		this.inventoryManager = new InventoryManager(inventory);
-		this.inventory = inventoryManager.read();
+	private InventoryManager inventoryManager;
+	private GlacierManager glacierManager;
 
-		String key = get("AWS key", awsKey, this.inventory.getAwsKey());
-		String secret = get("AWS secret", awsSecret, this.inventory.getAwsSecret());
+	GlacierBackupper(Path inventoryPath, String awsKey, String awsSecret) throws Exception {
+		Objects.requireNonNull(inventoryPath);
 
-		this.glacierManager = new GlacierManager(key, secret);
+		inventoryManager = new InventoryManagerJson(inventoryPath);
+		glacierManager = new GlacierManager(awsKey, awsSecret);
 	}
 
 	void upload(String name, String vault, String region, Path path, int chunkSize) throws Exception {
 		Objects.requireNonNull(path);
+		if (!Files.exists(path)) {
+			logger.error("File do not exist!");
+		}
 
 		name = get("File Name", name, path.getFileName().toString());
-		region = get("AWS Region", region, this.inventory.getDefaultRegion());
-		vault = get("Vault", vault, this.inventory.getDefaultVault());
 
-		Item exist = this.inventory.findItemByName(name);
+		String checksum = calculateChecksum(path);
+		Optional<Item> exist = inventoryManager.findItemByChecksum(checksum);
 		if (exist == null) {
 			String archiveId = glacierManager.upload(name, path, region, vault, chunkSize);
-			System.out.println("File: " + path + " uploaded successfully with id:" + archiveId);
-			Item item = new Item(name, archiveId, path.toFile().length(), vault, region);
-			this.inventory.addItem(item);
-			this.inventoryManager.store(inventory);
-			System.out.println("Inventory updated");
+			logger.info("File: {} uploaded successfully with name: {} and id: {}", path, name, archiveId);
+			inventoryManager.addItem(new Item(name, checksum, archiveId, path.toFile().length(), vault, region));
+			logger.info("Inventory updated");
 		} else {
-			System.out.println("File with this name has been already uploaded: " + exist);
+			logger.info("File has been already uploaded previously: {}", exist);
 		}
 	}
 
-	void createDownloadJob(String name) throws Exception {
+	void createDownloadJob(String name, boolean urgent) throws Exception {
 		Objects.requireNonNull(name);
 
-		Item item = this.inventory.findItemByName(name);
-		if (item == null) {
-			System.out.println("Any item with name =" + name);
+		Optional<Item> item = inventoryManager.findItemByName(name);
+		if (item.isPresent()) {
+			Optional<String> jobId = glacierManager.askToDownload(item.get(), urgent);
+			if (jobId.isPresent()) {
+				inventoryManager.addJob(new Job(jobId.get(), item.get().getArchiveId(), item.get().getName(), item.get().getRegion(), item.get().getVault(), urgent));
+				logger.info("Job to download {} created successfully", item.get().getName());
+			}
 		} else {
-			String jobId = glacierManager.askToDownload(item);
-			this.inventory.addJob(new Job(jobId, item.getArchiveId(), item.getName(), item.getRegion(), item.getVault()));
-			this.inventoryManager.store(inventory);
-			System.out.println("Job to download " + item.getName() + " created successfully");
+			logger.info("Any item with name: {}", name);
 		}
 	}
 
-	void download(String name, Path target, int chunkSize) throws Exception {
+	void download(String name, Path target, int chunkSize, boolean removeJob) throws Exception {
 		Objects.requireNonNull(name);
-		Job job = this.inventory.findJobByName(name);
+		Optional<Job> job = inventoryManager.findJobByName(name);
 
-		if (job == null){
-			System.out.println("Creating a job to a future download. Glacier is not a 'live' tool, it can take a day");
-		}
-		else {
-			if (glacierManager.isReadyDownload(job)) {
-				glacierManager.download(job, target, chunkSize);
+		if (job.isPresent()) {
+			Optional<Boolean> isReady = glacierManager.isReadyDownload(job.get());
+			if (isReady.isPresent()) {
+				if (isReady.get()) {
+					glacierManager.download(job.get(), target, chunkSize);
+					if (removeJob) {
+						inventoryManager.removeJob(job.get());
+					}
+				} else {
+					logger.info("Download is not still available");
+				}
+			} else {
+				logger.info("Download job expired, Create a new job to a future download. They expire more or less after 1day after job is completed");
+				inventoryManager.removeJob(job.get());
 			}
-			else {
-				System.out.println("Download is not still available");
-			}
+		} else {
+			logger.info("Create a job to a future download. Glacier is not a 'live' tool, it can take from 3 to 12h (urgent flag speeds the operation and increase the cost");
 		}
 	}
 
-	void configure(String awsKey, String awsSecret, String region, String vault){
+	void list() {
+		SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy HH:mm");
+		for (Item item : inventoryManager.getItems()) {
+			logger.info("NAME: {}", item.getName());
+			logger.info("UPLOAD DATE: {} SIZE: {}", sdf.format(item.getUploadDate()), item.getSize());
+			logger.info("------");
+		}
+	}
 
-		if (awsKey != null && !awsKey.isEmpty()){
-			this.inventory.setAwsKey(awsKey);
+	void jobStatus() {
+		for (Job job : inventoryManager.getJobs()) {
+			try {
+
+				Optional<StatusCode> statusCode = glacierManager.getJobStatus(job);
+				if (statusCode.isPresent()) {
+					logger.info("JOB FOR: {}", job.getName());
+					logger.info("Created {} ago", diffDates(job.getCreation(), new Date()));
+					logger.info("Last status check {} ago", diffDates(job.getLastStatus(), new Date()));
+					logger.info("Status: {}", (statusCode.get() == StatusCode.SUCCEEDED ? "READY TO DOWNLOAD" : statusCode));
+					inventoryManager.markJobChecked(job);
+				} else {
+					inventoryManager.removeJob(job);
+				}
+			} catch (Exception e) {
+				logger.info("ERROR getting status for job for: {}", job.getName());
+			}
+			logger.info("------");
 		}
-		if (awsSecret != null && !awsSecret.isEmpty()){
-			this.inventory.setAwsSecret(awsSecret);
-		}
-		if (region != null && !region.isEmpty()){
-			this.inventory.setDefaultRegion(region);
-		}
-		if (vault != null && !vault.isEmpty()){
-			this.inventory.setDefaultVault(vault);
+	}
+
+	void remove(String name) throws Exception {
+		Optional<Item> item = inventoryManager.findItemByName(name);
+		if (item.isPresent()) {
+			glacierManager.remove(item.get());
+			inventoryManager.removeItem(item.get());
+			logger.info("File {} has been removed from the vault {}", item.get().getName(), item.get().getArchiveId());
 		}
 	}
 
@@ -93,5 +134,26 @@ class GlacierBackupper {
 			}
 		}
 		throw new IllegalArgumentException(element + " has not value");
+	}
+
+	private String calculateChecksum(Path path) throws Exception {
+		MessageDigest md = MessageDigest.getInstance("MD5");
+		try (InputStream is = Files.newInputStream(path);
+			 DigestInputStream dis = new DigestInputStream(is, md)) {
+			byte[] buffer = new byte[4 * 1024 * 1024];
+			int i = 0;
+			while (dis.read(buffer) > -1 && i < 10) { //partitial checksum of max first 40mb
+				i++;
+			}
+		}
+		byte[] digest = md.digest();
+		return DatatypeConverter.printHexBinary(digest).toUpperCase();
+	}
+
+	private String diffDates(Date d1, Date d2) {
+		SimpleDateFormat sdf = new SimpleDateFormat("H'h' m'm' s's'");
+		long diffInMillis = Math.abs(d1.getTime() - d2.getTime());
+		Date d = new Date(diffInMillis);
+		return sdf.format(d);
 	}
 }
