@@ -12,7 +12,7 @@ interface InventoryManager {
 
 	void removeJob(Job j) throws Exception;
 
-	void markJobChecked(Job job);
+	void markJobChecked(Job job) throws Exception;
 
 	Iterable<Item> getItems();
 

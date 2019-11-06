@@ -97,22 +97,20 @@ class GlacierBackupper {
 		}
 	}
 
-	void jobStatus() {
+	void jobStatus() throws Exception {
 		for (Job job : inventoryManager.getJobs()) {
-			try {
 
-				Optional<StatusCode> statusCode = glacierManager.getJobStatus(job);
-				if (statusCode.isPresent()) {
-					logger.info("JOB FOR: {}", job.getName());
-					logger.info("Created {} ago", diffDates(job.getCreation(), new Date()));
+			Optional<StatusCode> statusCode = glacierManager.getJobStatus(job);
+			if (statusCode.isPresent()) {
+				logger.info("JOB FOR: {}", job.getName());
+				logger.info("Created {} ago", diffDates(job.getCreation(), new Date()));
+				if (job.getLastStatus() != null) {
 					logger.info("Last status check {} ago", diffDates(job.getLastStatus(), new Date()));
-					logger.info("Status: {}", (statusCode.get() == StatusCode.SUCCEEDED ? "READY TO DOWNLOAD" : statusCode));
-					inventoryManager.markJobChecked(job);
-				} else {
-					inventoryManager.removeJob(job);
 				}
-			} catch (Exception e) {
-				logger.info("ERROR getting status for job for: {}", job.getName());
+				logger.info("Status: {}", (statusCode.get() == StatusCode.SUCCEEDED ? "READY TO DOWNLOAD" : statusCode));
+				inventoryManager.markJobChecked(job);
+			} else {
+				inventoryManager.removeJob(job);
 			}
 			logger.info("------");
 		}

@@ -47,8 +47,12 @@ class InventoryManagerJson implements InventoryManager {
 		store();
 	}
 
-	public void markJobChecked(Job job) {
-		findJobByName(job.getName()).ifPresent( j -> j.setLastStatus(new Date()));
+	public void markJobChecked(Job job) throws Exception {
+		Optional<Job> jobInv =findJobByName(job.getName());
+		if (jobInv.isPresent()){
+			jobInv.get().setLastStatus(new Date());
+			store();
+		}
 	}
 
 	public Iterable<Item> getItems() {
