@@ -10,7 +10,7 @@ Read first all features (and restrictions) of S3 Glacier: https://aws.amazon.com
 
 S3 Glacier is not a "live" service. All "operations" must be requested first (jobs), after some hours, the job is completed and result can be read.
 
-* Upload a file
+*  **Upload a file**
 
 ```bash
 java -jar GlacierBackupper.jar -u  -i ~/InventoryGlacierBackup.json -f "/path/to/file/to/backup.zip" -v VaultName -r eu-west-1 -c 32
@@ -21,19 +21,21 @@ File will be stored with name = file name, in this example example "backup.zip",
 
 System keeps an inventory of uploaded files, if you try to upload again same file, systeme won't upload it again and it will inform you.
 
-* Request a download
+* **Request a download**
 
-```bashjava -jar GlacierBackupper.jar -rd -i ~/InventoryGlacierBackup.json -n "backup.zip" 
+```bash
+java -jar GlacierBackupper.jar -rd -i ~/InventoryGlacierBackup.json -n "backup.zip" 
 ```
 This will request a job in "bulk" tier (about 6-12h to be finished), the cheapest one. For more "urgent" add -u flag (3-5h)
 
-* List status jobs
+* **List status jobs**
 
-```bashjava -jar GlacierBackupper.jar -ps -i ~/InventoryGlacierBackup.json
+```bash
+java -jar GlacierBackupper.jar -ps -i ~/InventoryGlacierBackup.json
 ```
 To get status of requested jobs. Must not pass more than 24h between a job is completed (so after 6-12h after has been requested) till result is downloaded, other wise job is lost
 
-* Download
+* **Download**
 
 ```bash
 java -jar GlacierBackupper.jar -d -i ~/InventoryGlacierBackup.json -n "backup.zip" -c 32 -t /target/file.zip
@@ -41,14 +43,14 @@ java -jar GlacierBackupper.jar -d -i ~/InventoryGlacierBackup.json -n "backup.zi
 Downloads backup.zip file to /target/file.zip in chunks of 32MB. 
 This file must to be requested first and job been completed before be able to download it.
 
-* Delete a file
+* **Delete a file**
 
 ```bash
 java -jar GlacierBackupper.jar -rm -n "backup.zip" -i ~/InventoryGlacierBackup.json
 ```
 Deletes from Glacier the file "backup.zip"
 
-* List
+* **List**
 
 ```bash
 java -jar GlacierBackupper.jar -ls -i ~/InventoryGlacierBackup.json
