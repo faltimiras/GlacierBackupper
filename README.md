@@ -13,7 +13,7 @@ S3 Glacier is not a "live" service. All "operations" must be requested first (jo
 *  **Upload a file**
 
 ```bash
-java -jar GlacierBackupper.jar -u  -i ~/InventoryGlacierBackup.json -f "/path/to/file/to/backup.zip" -v VaultName -r eu-west-1 -c 32
+java -jar GlacierBackupper-1.0.jar -u  -i ~/InventoryGlacierBackup.json -f "/path/to/file/to/backup.zip" -v VaultName -r eu-west-1 -c 32
 ```
 This would upload to the already created vault in your S3 Glacier called "VaultName" on AWS Ireland region the file called backup.zip in chuncks of 32MB
 
@@ -24,21 +24,21 @@ System keeps an inventory of uploaded files, if you try to upload again same fil
 * **Request a download**
 
 ```bash
-java -jar GlacierBackupper.jar -rd -i ~/InventoryGlacierBackup.json -n "backup.zip" 
+java -jar GlacierBackupper-1.0.jar -rd -i ~/InventoryGlacierBackup.json -n "backup.zip" 
 ```
 This will request a job in "bulk" tier (about 6-12h to be finished), the cheapest one. For more "urgent" add -u flag (3-5h)
 
 * **List status jobs**
 
 ```bash
-java -jar GlacierBackupper.jar -ps -i ~/InventoryGlacierBackup.json
+java -jar GlacierBackupper-1.0.jar -ps -i ~/InventoryGlacierBackup.json
 ```
 To get status of requested jobs. Must not pass more than 24h between a job is completed (so after 6-12h after has been requested) till result is downloaded, other wise job is lost
 
 * **Download**
 
 ```bash
-java -jar GlacierBackupper.jar -d -i ~/InventoryGlacierBackup.json -n "backup.zip" -c 32 -t /target/file.zip
+java -jar GlacierBackupper-1.0.jar -d -i ~/InventoryGlacierBackup.json -n "backup.zip" -c 32 -t /target/file.zip
 ```
 Downloads backup.zip file to /target/file.zip in chunks of 32MB. 
 This file must to be requested first and job been completed before be able to download it.
@@ -46,14 +46,14 @@ This file must to be requested first and job been completed before be able to do
 * **Delete a file**
 
 ```bash
-java -jar GlacierBackupper.jar -rm -n "backup.zip" -i ~/InventoryGlacierBackup.json
+java -jar GlacierBackupper-1.0.jar -rm -n "backup.zip" -i ~/InventoryGlacierBackup.json
 ```
 Deletes from Glacier the file "backup.zip"
 
 * **List**
 
 ```bash
-java -jar GlacierBackupper.jar -ls -i ~/InventoryGlacierBackup.json
+java -jar GlacierBackupper-1.0.jar -ls -i ~/InventoryGlacierBackup.json
 ```
 List all files uploaded to Glacier accorgind the local inventory. It doesn't request anything to S3 Glacier
 
