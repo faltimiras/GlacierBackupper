@@ -40,12 +40,12 @@ class GlacierBackupper {
 		String checksum = calculateChecksum(path);
 		Optional<Item> exist = inventoryManager.findItemByChecksum(checksum);
 		if (exist.isPresent()) {
+			logger.info("File has been already uploaded previously: {}", exist.get());
+		} else {
 			String archiveId = glacierManager.upload(name, path, region, vault, chunkSize);
 			logger.info("File: {} uploaded successfully with name: {} and id: {}", path, name, archiveId);
 			inventoryManager.addItem(new Item(name, checksum, archiveId, path.toFile().length(), vault, region));
 			logger.info("Inventory updated");
-		} else {
-			logger.info("File has been already uploaded previously: {}", exist.get());
 		}
 	}
 
