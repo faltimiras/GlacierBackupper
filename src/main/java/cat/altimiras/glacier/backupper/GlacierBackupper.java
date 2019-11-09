@@ -10,6 +10,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.DigestInputStream;
 import java.security.MessageDigest;
+import java.text.Normalizer;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Objects;
@@ -35,7 +36,7 @@ class GlacierBackupper {
 			logger.error("File do not exist!");
 		}
 
-		name = get("File Name", name, path.getFileName().toString());
+		name = normalize(get("File Name", name, path.getFileName().toString()));
 
 		String checksum = calculateChecksum(path);
 		Optional<Item> exist = inventoryManager.findItemByChecksum(checksum);
@@ -153,5 +154,11 @@ class GlacierBackupper {
 		long diffInMillis = Math.abs(d1.getTime() - d2.getTime());
 		Date d = new Date(diffInMillis);
 		return sdf.format(d);
+	}
+
+	private  String normalize(String src) {
+		return Normalizer
+				.normalize(src, Normalizer.Form.NFD)
+				.replaceAll("[^\\p{ASCII}]", "");
 	}
 }
